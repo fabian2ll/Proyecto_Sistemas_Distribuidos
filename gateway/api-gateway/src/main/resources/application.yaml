@@ -1,0 +1,36 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      
+      discovery:
+        locator:
+          enabled: true
+      routes:
+        - id: auth-route
+          uri: https://httpbin.org/get
+          predicates:
+            - Path=/auth/**
+
+        - id: contract-route
+          uri: lb://ms-contracts
+          predicates:
+            - Path=/contracts/**
+
+        - id: suppliers-route
+          uri: lb://ms-suppliers
+          predicates:
+            - Path=/suppliers/**
+
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true

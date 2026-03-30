@@ -37,10 +37,10 @@ public class KafkaConsumerConfig {
     }
 
     @Bean
+    @SuppressWarnings("null")
     public ConcurrentKafkaListenerContainerFactory<String, EventDTO> kafkaListenerContainerFactory(
             ConsumerFactory<String, EventDTO> consumerFactory) {
-        ConcurrentKafkaListenerContainerFactory<String, EventDTO> factory =
-                new ConcurrentKafkaListenerContainerFactory<>();
+        ConcurrentKafkaListenerContainerFactory<String, EventDTO> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory);
         return factory;
     }

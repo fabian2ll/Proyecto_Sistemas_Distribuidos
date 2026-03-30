@@ -1,29 +1,82 @@
 services:
+  postgres:
+    image: postgres:15
+    container_name: postgres_db
+    environment:
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=contracts_db
+    networks:
+      - vpc_private
+
+  service-registry:
+    build: ./service-registry
+    container_name: service-registry
+    expose:
+      - "8761"
+    networks:
+      - vpc_private
+
   api-gateway:
-    image: node:18
+    build: ./gateway/api-gateway
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
     networks:
       - dmz
       - vpc_private
+    depends_on:
+      - service-registry
 
   ms-auth:
-    image: openjdk:17
+    build: ./ms-auth
+    container_name: ms-auth
+    env_file:
+      - proyecto.env
+    environment:
+      - SPRING_DATASOURCE_USERNAME=${DB_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
     networks:
       - vpc_private
+    depends_on:
+      - postgres
+      - service-registry
 
   ms-contracts:
-    image: openjdk:17
+    build: ./ms-contracts
+    container_name: ms-contracts
+    env_file:
+      - proyecto.env
+    environment:
+      - SPRING_DATASOURCE_USERNAME=${DB_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
     networks:
       - vpc_private
+    depends_on:
+      - postgres
+      - service-registry
 
   ms-suppliers:
-    image: openjdk:17
+    build: ./ms-suppliers
+    container_name: ms-suppliers
+    env_file:
+      - proyecto.env
+    environment:
+      - SPRING_DATASOURCE_USERNAME=${DB_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
     networks:
       - vpc_private
+    depends_on:
+      - postgres
+      - service-registry
 
   ms-audit:
-    image: node:18
+    build: ./ms-audit
+    container_name: ms-audit
     networks:
       - vpc_private
+    depends_on:
+      - service-registry
 
 networks:
   dmz:

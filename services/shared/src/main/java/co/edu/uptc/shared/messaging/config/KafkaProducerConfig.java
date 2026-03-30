@@ -28,6 +28,7 @@ public class KafkaProducerConfig {
     }
 
     @Bean
+    @SuppressWarnings("null")
     public KafkaTemplate<String, EventDTO> kafkaTemplate(ProducerFactory<String, EventDTO> producerFactory) {
         return new KafkaTemplate<>(producerFactory);
     }

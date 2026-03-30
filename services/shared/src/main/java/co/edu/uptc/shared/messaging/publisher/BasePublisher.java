@@ -15,6 +15,7 @@ public abstract class BasePublisher {
         this.kafkaTemplate = kafkaTemplate;
     }
 
+    @SuppressWarnings("null")
     protected void publish(String topic, EventDTO event) {
         if (event.getTimestamp() == null) {
             event.setTimestamp(Instant.now());

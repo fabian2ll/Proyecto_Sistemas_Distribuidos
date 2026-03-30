@@ -40,9 +40,10 @@ class BasePublisherTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void testPublishSetsTimestampIfNull() {
         EventDTO event = new EventDTO(null, "test-service", "TEST_ACTION", "data");
-        
+
         publisher.publishEvent("test-topic", event);
 
         ArgumentCaptor<EventDTO> eventCaptor = ArgumentCaptor.forClass(EventDTO.class);
@@ -54,6 +55,7 @@ class BasePublisherTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void testPublishKeepsExistingTimestamp() {
         Instant past = Instant.parse("2020-01-01T00:00:00Z");
         EventDTO event = new EventDTO(past, "test-service", "TEST_ACTION", "data");

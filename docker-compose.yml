@@ -105,8 +105,11 @@ services:
       - "3000:3000"
     networks:
       - vpc_private
+    environment:
+      - ELASTICSEARCH_NODE=http://elasticsearch_db:9200
     depends_on:
       - service-registry
+      - elasticsearch_db
 
   elasticsearch_db:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2

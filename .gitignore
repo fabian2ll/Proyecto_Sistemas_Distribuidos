@@ -1,1 +1,15 @@
+*.env
+proyecto.env
+
+node_modules/
+dist/
+npm-debug.log
+yarn-error.log
+
+target/
+*.jar
+*.war
+*.class
+.mvn/
+
 .vscode/

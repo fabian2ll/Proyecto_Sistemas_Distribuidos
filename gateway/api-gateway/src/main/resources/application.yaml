@@ -1,36 +1,77 @@
-server:
-  port: 8080
+# Classic Eureka configuration
+eureka:
+  instance:
+    preferIpAddress: true
+    hostname: ${HOSTNAME:localhost}
 
+  client:
+    registerWithEureka: true
+    fetchRegistry: true
+    serviceUrl:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
+
+
+## Enable service discovery (with Eureka)
+## lower-case-service-id is mandatory, otherwise is retrieved in upper case from Eureka
 spring:
   application:
-    name: api-gateway
+    name: gateway
   cloud:
     gateway:
-      
-      discovery:
-        locator:
-          enabled: true
-      routes:
-        - id: auth-route
-          uri: https://httpbin.org/get
-          predicates:
-            - Path=/auth/**
+      server:
+        webflux:
+          routes:
+            - id: ms-auth
+              uri: lb://ms-auth
+              predicates:
+                - Path=/ms-auth/**
+              filters:
+                - StripPrefix=1
+    
+            - id: ms-contracts
+              uri: lb://ms-contracts
+              predicates:
+                - Path=/ms-contracts/**
+              filters:
+                - StripPrefix=1
+    
+            - id: ms-suppliers
+              uri: lb://ms-suppliers
+              predicates:
+                - Path=/ms-suppliers/**
+              filters:
+                - StripPrefix=1
+          discovery:
+            locator:
+              enabled: true
+              lower-case-service-id: true
+          default-filters:
+            - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+          globalcors:
+            cors-configurations:
+              '[/**]': ## For all routes
+                allowedOrigins: ${ALLOWED_ORIGINS:*} # With '*' we allow all origins. We can restrict by indicating domains or ip + port, e.g. http://localhost:3000 (where our front is, or a Vercel domain)
+                allowedHeaders: "*" ## All headers allowed
+                allowedMethods:
+                  - GET
+                  - POST
+                  - PUT
+                  - DELETE
+                  - PATCH
 
-        - id: contract-route
-          uri: lb://ms-contracts
-          predicates:
-            - Path=/contracts/**
-
-        - id: suppliers-route
-          uri: lb://ms-suppliers
-          predicates:
-            - Path=/suppliers/**
-
-eureka:
-  client:
-    register-with-eureka: true
-    fetch-registry: true
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
-  instance:
-    prefer-ip-address: true
+## We enable the Actuator API to be able to access <<host>>/actuator/gateway/routes
+## We expose the routings that have been automatically detected (all)
+## Depending on the ROUTE_TABLES_ENABLED environment variable (true by default)
+management:
+  endpoint:
+    gateway:
+      access: ${ROUTE_TABLES_ENABLED:read_only}
+  endpoints:
+    web:
+      exposure:
+        include:
+          - '*'
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.cloud.gateway.discovery: TRACE

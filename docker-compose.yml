@@ -1,27 +1,125 @@
 services:
+  postgres-auth:
+    image: postgres:15
+    container_name: postgres_auth_db
+    environment:
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=auth_db
+    ports:
+      - "5432:5432"
+    networks:
+      - vpc_private
+
+  postgres-contracts:
+    image: postgres:15
+    container_name: postgres_contracts_db
+    environment:
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=contracts_db
+    ports:
+      - "5433:5432"
+    networks:
+      - vpc_private
+
+  postgres-suppliers:
+    image: postgres:15
+    container_name: postgres_suppliers_db
+    environment:
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=suppliers_db
+    ports:
+      - "5434:5432"
+    networks:
+      - vpc_private
+
+  service-registry:
+    build: ./service-registry
+    container_name: service-registry
+    ports:
+      - "8761:8761"
+    networks:
+      - vpc_private
+
   api-gateway:
-    image: node:18
+    build: ./gateway/api-gateway
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
     networks:
       - dmz
       - vpc_private
+    environment:
+      - EUREKA_URL=http://service-registry:8761/eureka/
+    depends_on:
+      - service-registry
 
   ms-auth:
-    image: openjdk:17
+    build: ./ms-auth
+    container_name: ms-auth
+    env_file: .env
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-auth:5432/auth_db
+      - SPRING_DATASOURCE_USERNAME=${DB_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
     networks:
       - vpc_private
+    depends_on:
+      - postgres-auth
+      - service-registry
 
   ms-contracts:
-    image: openjdk:17
+    build: ./ms-contracts
+    container_name: ms-contracts
+    env_file: .env
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-contracts:5432/contracts_db
+      - SPRING_DATASOURCE_USERNAME=${DB_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
     networks:
       - vpc_private
+    depends_on:
+      - postgres-contracts
+      - service-registry
 
   ms-suppliers:
-    image: openjdk:17
+    build: ./ms-suppliers
+    container_name: ms-suppliers
+    env_file: .env
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-suppliers:5432/suppliers_db
+      - SPRING_DATASOURCE_USERNAME=${DB_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
     networks:
       - vpc_private
+    depends_on:
+      - postgres-suppliers
+      - service-registry
 
   ms-audit:
-    image: node:18
+    build: ./ms-audit
+    container_name: ms-audit
+    ports:
+      - "3000:3000"
+    networks:
+      - vpc_private
+    environment:
+      - ELASTICSEARCH_NODE=http://elasticsearch_db:9200
+    depends_on:
+      - service-registry
+      - elasticsearch_db
+
+  elasticsearch_db:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
+    container_name: elasticsearch_db
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
     networks:
       - vpc_private
 

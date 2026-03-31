@@ -1,13 +1,37 @@
 services:
-  postgres:
+  postgres-auth:
     image: postgres:15
-    container_name: postgres_db
+    container_name: postgres_auth_db
+    environment:
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=auth_db
+    ports:
+      - "5432:5432"
+    networks:
+      - vpc_private
+
+  postgres-contracts:
+    image: postgres:15
+    container_name: postgres_contracts_db
     environment:
       - POSTGRES_USER=${DB_USERNAME}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_DB=contracts_db
-    volumes:
-      - ./postgres-init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5433:5432"
+    networks:
+      - vpc_private
+
+  postgres-suppliers:
+    image: postgres:15
+    container_name: postgres_suppliers_db
+    environment:
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=suppliers_db
+    ports:
+      - "5434:5432"
     networks:
       - vpc_private
 
@@ -37,12 +61,13 @@ services:
     container_name: ms-auth
     env_file: .env
     environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-auth:5432/auth_db
       - SPRING_DATASOURCE_USERNAME=${DB_USERNAME}
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
     networks:
       - vpc_private
     depends_on:
-      - postgres
+      - postgres-auth
       - service-registry
 
   ms-contracts:
@@ -50,12 +75,13 @@ services:
     container_name: ms-contracts
     env_file: .env
     environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-contracts:5432/contracts_db
       - SPRING_DATASOURCE_USERNAME=${DB_USERNAME}
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
     networks:
       - vpc_private
     depends_on:
-      - postgres
+      - postgres-contracts
       - service-registry
 
   ms-suppliers:
@@ -63,12 +89,13 @@ services:
     container_name: ms-suppliers
     env_file: .env
     environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-suppliers:5432/suppliers_db
       - SPRING_DATASOURCE_USERNAME=${DB_USERNAME}
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
     networks:
       - vpc_private
     depends_on:
-      - postgres
+      - postgres-suppliers
       - service-registry
 
   ms-audit:

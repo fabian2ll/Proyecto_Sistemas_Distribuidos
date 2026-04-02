@@ -1,50 +1,62 @@
 services:
   postgres-auth:
     image: postgres:15
+    env_file:
+      - .env
     container_name: postgres_auth_db
     environment:
       - POSTGRES_USER=${DB_USERNAME}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_DB=auth_db
-    ports:
-      - "5432:5432"
     networks:
       - vpc_private
 
   postgres-contracts:
     image: postgres:15
+    env_file:
+      - .env
     container_name: postgres_contracts_db
     environment:
       - POSTGRES_USER=${DB_USERNAME}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_DB=contracts_db
-    ports:
-      - "5433:5432"
     networks:
       - vpc_private
 
   postgres-suppliers:
     image: postgres:15
+    env_file:
+      - .env
     container_name: postgres_suppliers_db
     environment:
       - POSTGRES_USER=${DB_USERNAME}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_DB=suppliers_db
-    ports:
-      - "5434:5432"
     networks:
       - vpc_private
 
   service-registry:
-    build: ./service-registry
+    build:
+      context: ./service-registry
+      dockerfile: Dockerfile
+      target: development
     container_name: service-registry
     ports:
       - "8761:8761"
     networks:
       - vpc_private
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8761/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   api-gateway:
-    build: ./gateway/api-gateway
+    build:
+      context: ./gateway/api-gateway
+      dockerfile: Dockerfile
+      target: development
     container_name: api-gateway
     ports:
       - "8080:8080"
@@ -54,10 +66,14 @@ services:
     environment:
       - EUREKA_URL=http://service-registry:8761/eureka/
     depends_on:
-      - service-registry
+      service-registry:
+        condition: service_healthy
 
   ms-auth:
-    build: ./ms-auth
+    build:
+      context: ./services
+      dockerfile: ms-auth/Dockerfile
+      target: development
     container_name: ms-auth
     env_file: .env
     environment:
@@ -67,11 +83,16 @@ services:
     networks:
       - vpc_private
     depends_on:
-      - postgres-auth
-      - service-registry
+      postgres-auth:
+        condition: service_started
+      service-registry:
+        condition: service_healthy
 
   ms-contracts:
-    build: ./ms-contracts
+    build:
+      context: ./services
+      dockerfile: ms-contracts/Dockerfile
+      target: development
     container_name: ms-contracts
     env_file: .env
     environment:
@@ -81,11 +102,16 @@ services:
     networks:
       - vpc_private
     depends_on:
-      - postgres-contracts
-      - service-registry
+      postgres-contracts:
+        condition: service_started
+      service-registry:
+        condition: service_healthy
 
   ms-suppliers:
-    build: ./ms-suppliers
+    build:
+      context: ./services
+      dockerfile: ms-suppliers/Dockerfile
+      target: development
     container_name: ms-suppliers
     env_file: .env
     environment:
@@ -95,21 +121,26 @@ services:
     networks:
       - vpc_private
     depends_on:
-      - postgres-suppliers
-      - service-registry
+      postgres-suppliers:
+        condition: service_started
+      service-registry:
+        condition: service_healthy
 
   ms-audit:
-    build: ./ms-audit
+    build:
+      context: ./services/ms-audit
+      dockerfile: Dockerfile
+      target: development
     container_name: ms-audit
-    ports:
-      - "3000:3000"
     networks:
       - vpc_private
     environment:
       - ELASTICSEARCH_NODE=http://elasticsearch_db:9200
     depends_on:
-      - service-registry
-      - elasticsearch_db
+      service-registry:
+        condition: service_healthy
+      elasticsearch_db:
+        condition: service_started
 
   elasticsearch_db:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
@@ -118,8 +149,6 @@ services:
       - discovery.type=single-node
       - xpack.security.enabled=false
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-    ports:
-      - "9200:9200"
     networks:
       - vpc_private
 

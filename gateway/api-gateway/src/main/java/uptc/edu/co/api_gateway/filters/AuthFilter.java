@@ -18,7 +18,7 @@ public class AuthFilter implements GlobalFilter, Ordered {
         String path = exchange.getRequest().getPath().toString();
 
        
-        if (path.startsWith("/auth/") || path.equals("/auth")) {
+        if (path.startsWith("/ms-auth/") || path.equals("/ms-auth")) {
             return chain.filter(exchange);
         }
 

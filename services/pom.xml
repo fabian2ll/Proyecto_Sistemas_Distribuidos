@@ -19,6 +19,8 @@
     <modules>
         <module>shared</module>
         <module>ms-auth</module>
+        <module>ms-contracts</module>
+        <module>ms-suppliers</module>
     </modules>
 
     <properties>

@@ -80,6 +80,7 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-auth:5432/auth_db
       - SPRING_DATASOURCE_USERNAME=${DB_USERNAME}
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
+      - EUREKA_URL=http://service-registry:8761/eureka/
     networks:
       - vpc_private
     depends_on:

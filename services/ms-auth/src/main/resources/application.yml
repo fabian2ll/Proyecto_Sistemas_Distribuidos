@@ -4,6 +4,9 @@ spring:
   profiles:
     active: dev
 
+server:
+  port: ${SERVER_PORT:8081}
+
 ---
 spring:
   config:
@@ -11,9 +14,9 @@ spring:
       on-profile: dev
   
   datasource:
-    url: jdbc:postgresql://postgres:5432/auth_db
-    username: ${SPRING_DATASOURCE_USERNAME}
-    password: ${SPRING_DATASOURCE_PASSWORD}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/auth_db}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:123}
     driver-class-name: org.postgresql.Driver
   
   jpa:
@@ -24,7 +27,7 @@ spring:
 eureka:
   client:
     service-url:
-      defaultZone: http://service-registry:8761/eureka/
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
   instance:
     prefer-ip-address: true
 
@@ -36,3 +39,7 @@ management:
   endpoint:
     health:
       show-details: always
+
+jwt:
+  secret: ${JWT_SECRET_BASE64:c3VwZXItc2VjcmV0LWtleS1mb3Itand0LW11c3QtYmUtMzItYnl0ZXMtbWluaW11bQ==}
+  expiration-seconds: ${JWT_EXPIRATION_SECONDS:3600}

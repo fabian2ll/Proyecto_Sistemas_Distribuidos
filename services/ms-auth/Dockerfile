@@ -11,7 +11,7 @@ COPY ms-suppliers/pom.xml ./ms-suppliers/
 COPY shared/src ./shared/src
 COPY ms-auth/src ./ms-auth/src
 # In dev we run specific module
-CMD ["mvn", "-pl", "ms-auth", "-am", "spring-boot:run", "-Dspring-boot.run.profiles=dev"]
+CMD ["sh", "-c", "mvn install -N -DskipTests && mvn install -pl shared -DskipTests && mvn spring-boot:run -pl ms-auth -Dspring-boot.run.profiles=dev"]
 
 # Stage: builder
 FROM base AS builder

@@ -10,7 +10,7 @@ COPY ms-contracts/pom.xml ./ms-contracts/
 COPY ms-suppliers/pom.xml ./ms-suppliers/
 COPY shared/src ./shared/src
 COPY ms-suppliers/src ./ms-suppliers/src
-CMD ["mvn", "-pl", "ms-suppliers", "-am", "spring-boot:run", "-Dspring-boot.run.profiles=dev"]
+CMD ["sh", "-c", "mvn install -N -DskipTests && mvn install -pl shared -DskipTests && mvn spring-boot:run -pl ms-suppliers -Dspring-boot.run.profiles=dev"]
 
 # Stage: builder
 FROM base AS builder

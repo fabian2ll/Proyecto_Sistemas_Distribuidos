@@ -78,3 +78,6 @@ logging:
 
 jwt:
   secret: ${JWT_SECRET_BASE64:c3VwZXItc2VjcmV0LWtleS1mb3Itand0LW11c3QtYmUtMzItYnl0ZXMtbWluaW11bQ==}
+
+gateway:
+  secret: ${GATEWAY_SECRET:shared-super-secret}

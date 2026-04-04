@@ -21,9 +21,14 @@ import reactor.core.publisher.Mono;
 @Component
 public class AuthFilter implements GlobalFilter, Ordered {
     private final SecretKey key;
+    private final String gatewaySecret;
 
-    public AuthFilter(@Value("${jwt.secret}") String secretBase64) {
+    public AuthFilter(
+        @Value("${jwt.secret}") String secretBase64,
+        @Value("${gateway.secret}") String gatewaySecret
+    ) {
         this.key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secretBase64));
+        this.gatewaySecret = gatewaySecret;
     }
 
     @Override
@@ -69,6 +74,7 @@ public class AuthFilter implements GlobalFilter, Ordered {
                 .request(r -> r.headers(headers -> {
                     headers.add("X-User", subject);
                     headers.add("X-Scopes", scopes);
+                    headers.add("X-Gateway-Secret", this.gatewaySecret);
                 }))
                 .build();
 

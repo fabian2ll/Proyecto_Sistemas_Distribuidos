@@ -5,11 +5,11 @@ import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import co.edu.uptc.shared.security.JwtScopeExtractor;
+import co.edu.uptc.shared.security.RoleScopeCatalog;
+import co.edu.uptc.shared.security.ScopeAuthorizationMiddleware;
 import javax.crypto.SecretKey;
-import java.util.Collection;
-import java.util.HashSet;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
@@ -23,6 +23,7 @@ import reactor.core.publisher.Mono;
 @Component
 public class AuthFilter implements GlobalFilter, Ordered {
 
+    private final ScopeAuthorizationMiddleware scopeAuthorizationMiddleware = new ScopeAuthorizationMiddleware();
     private final SecretKey key;
 
     public AuthFilter(@Value("${jwt.secret}") String secretBase64) {
@@ -61,10 +62,10 @@ public class AuthFilter implements GlobalFilter, Ordered {
             return exchange.getResponse().setComplete();
         }
 
-        Set<String> scopes = extractScopes(claims.get("scopes"));
-        String requiredScope = requiredScope(method, path);
+        Set<String> scopes = JwtScopeExtractor.extractScopes(claims);
+        Set<String> requiredScopes = requiredScopes(method, path, exchange);
 
-        if (requiredScope != null && !scopes.contains(requiredScope)) {
+        if (!scopeAuthorizationMiddleware.isAllowed(scopes, requiredScopes)) {
             exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
             return exchange.getResponse().setComplete();
         }
@@ -78,26 +79,57 @@ public class AuthFilter implements GlobalFilter, Ordered {
                 || path.startsWith("/ms-auth/actuator");
     }
 
-    private String requiredScope(HttpMethod method, String path) {
-        if (method == HttpMethod.POST && path.startsWith("/ms-contracts/")) {
-            return "create:contract";
+    private Set<String> requiredScopes(HttpMethod method, String path, ServerWebExchange exchange) {
+        if (isServicePath(path, "/ms-contracts")) {
+            if (method == HttpMethod.POST) {
+                return Set.of(RoleScopeCatalog.CREATE_CONTRACT);
+            }
+
+            if (method == HttpMethod.PUT || method == HttpMethod.PATCH) {
+                return Set.of(RoleScopeCatalog.UPDATE_CONTRACT);
+            }
+
+            if (method == HttpMethod.GET) {
+                return readContractScopes(exchange);
+            }
         }
 
-        if (method == HttpMethod.GET && path.startsWith("/ms-audit/")) {
-            return "view:audit";
+        if (isServicePath(path, "/ms-suppliers")) {
+            if (method == HttpMethod.POST) {
+                return Set.of(RoleScopeCatalog.CREATE_SUPPLIER);
+            }
+
+            if (method == HttpMethod.PUT || method == HttpMethod.PATCH) {
+                return Set.of(RoleScopeCatalog.UPDATE_SUPPLIER);
+            }
+
+            if (method == HttpMethod.GET) {
+                return Set.of(RoleScopeCatalog.VIEW_SUPPLIERS);
+            }
         }
 
-        return null;
+        if (isServicePath(path, "/ms-audit") && method == HttpMethod.GET) {
+            return Set.of(RoleScopeCatalog.VIEW_AUDIT);
+        }
+
+        return Set.of();
     }
 
-    private Set<String> extractScopes(Object rawScopes) {
-        if (!(rawScopes instanceof Collection<?> collection)) {
-            return Set.of();
+    private Set<String> readContractScopes(ServerWebExchange exchange) {
+        if (hasByIdQuery(exchange)) {
+            return Set.of(RoleScopeCatalog.VIEW_CONTRACTS_BY_ID);
         }
 
-        return collection.stream()
-                .map(Object::toString)
-                .collect(Collectors.toCollection(HashSet::new));
+        return Set.of(RoleScopeCatalog.VIEW_CONTRACTS);
+    }
+
+    private boolean hasByIdQuery(ServerWebExchange exchange) {
+        return exchange.getRequest().getQueryParams().containsKey("contractId")
+                || exchange.getRequest().getQueryParams().containsKey("id");
+    }
+
+    private boolean isServicePath(String path, String servicePrefix) {
+        return path.equals(servicePrefix) || path.startsWith(servicePrefix + "/");
     }
 
     @Override

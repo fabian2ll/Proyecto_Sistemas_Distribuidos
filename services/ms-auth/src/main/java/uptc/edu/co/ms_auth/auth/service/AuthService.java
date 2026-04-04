@@ -7,35 +7,24 @@ import uptc.edu.co.ms_auth.auth.dto.AuthResponse;
 import uptc.edu.co.ms_auth.auth.dto.LoginRequest;
 import uptc.edu.co.ms_auth.auth.dto.RegisterRequest;
 import uptc.edu.co.ms_auth.auth.dto.RegisterResponse;
-import uptc.edu.co.ms_auth.auth.model.Role;
 import uptc.edu.co.ms_auth.auth.model.User;
-import uptc.edu.co.ms_auth.auth.repository.RoleRepository;
 import uptc.edu.co.ms_auth.auth.repository.UserRepository;
 import uptc.edu.co.ms_auth.auth.security.JwtService;
 import uptc.edu.co.ms_auth.auth.security.Sha256Hasher;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 public class AuthService {
-
-    private static final String DEFAULT_ROLE = "USER";
-
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
     private final Sha256Hasher hasher;
     private final JwtService jwtService;
 
     public AuthService(UserRepository userRepository,
-                       RoleRepository roleRepository,
                        Sha256Hasher hasher,
                        JwtService jwtService) {
         this.userRepository = userRepository;
-        this.roleRepository = roleRepository;
         this.hasher = hasher;
         this.jwtService = jwtService;
     }
@@ -45,23 +34,15 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already exists");
         }
 
-        Set<String> roleNames = resolveRoleNames(request.getRoles());
-        List<Role> roles = roleRepository.findByNameIn(roleNames);
-
-        if (roles.size() != roleNames.size()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "One or more roles do not exist");
-        }
-
         User user = new User();
         user.setUsername(request.getUsername());
         user.setPasswordHash(hasher.hash(request.getPassword()));
         user.setActive(true);
-        user.setRoles(new HashSet<>(roles));
 
         User saved = userRepository.save(user);
 
         List<String> assignedRoles = saved.getRoles().stream()
-                .map(Role::getName)
+                .map(role -> role.getName())
                 .sorted()
                 .toList();
 
@@ -86,18 +67,5 @@ public class AuthService {
 
         String token = jwtService.generateToken(user.getUsername(), sortedScopes);
         return new AuthResponse(token, "Bearer", jwtService.getExpirationSeconds(), sortedScopes);
-    }
-
-    private Set<String> resolveRoleNames(List<String> incomingRoles) {
-        if (incomingRoles == null || incomingRoles.isEmpty()) {
-            return Set.of(DEFAULT_ROLE);
-        }
-
-        return incomingRoles.stream()
-                .filter(Objects::nonNull)
-                .map(String::trim)
-                .filter(value -> !value.isBlank())
-                .map(String::toUpperCase)
-                .collect(Collectors.toSet());
     }
 }

@@ -1,9 +1,13 @@
 package uptc.edu.co.api_gateway.filters;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+
+import java.util.Collection;
+
 import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
@@ -42,11 +46,32 @@ public class AuthFilter implements GlobalFilter, Ordered {
         String token = authHeader.substring(7);
 
         try {
-            // We only check if the jwt is valid, if it's expired or invalid, it will throw an exception
-            Jwts.parser()
+            Claims claims = Jwts.parser()
                 .verifyWith(key)
                 .build()
-                .parseSignedClaims(token);
+                .parseSignedClaims(token)
+                .getPayload();
+
+            String subject = claims.getSubject();
+            Object scopesObj = claims.get("scopes");
+
+            String scopes = (scopesObj instanceof Collection<?>)
+                ? String.join(",",
+                    ((Collection<?>) scopesObj)
+                        .stream()
+                        .map(Object::toString)
+                        .toList()
+                )
+                : "";
+
+            // Mutate the request adding headers
+            exchange = exchange.mutate()
+                .request(r -> r.headers(headers -> {
+                    headers.add("X-User", subject);
+                    headers.add("X-Scopes", scopes);
+                }))
+                .build();
+
         } catch (JwtException ex) {
             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
             return exchange.getResponse().setComplete();
